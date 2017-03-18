@@ -7,7 +7,7 @@ public class Settings {
 	
 	public static final int visionImageWidthPixels = 640; 
 	
-	public static final int visionImageHeightPixels = 480;
+	public static final int visionImageHeightPixels = 360;
 
 	public static final int visionImageCenterXPixels = visionImageWidthPixels/2;
 	
