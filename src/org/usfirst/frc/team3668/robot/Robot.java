@@ -20,6 +20,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
  */
 public class Robot extends IterativeRobot {
 	private int previousExposureValue;
+	private int previousDist;
 	public static OI oi;
 	public static VisionProcessing visionProcessing = new VisionProcessing();
 
@@ -35,6 +36,7 @@ public class Robot extends IterativeRobot {
 		oi = new OI();
 		visionProcessing.start();
 		SmartDashboard.putNumber("Camera Exposure: ", Settings.cameraExposure);
+		SmartDashboard.putNumber("distance: ", 0);
 	}
 
 	/**
@@ -89,17 +91,23 @@ public class Robot extends IterativeRobot {
 
 	@Override
 	public void teleopInit() {
-		VisionProcessing.setCameraExposure((int) SmartDashboard.getNumber("Camera Exposure: "));
-		previousExposureValue = (int) SmartDashboard.getNumber("Camera Exposure: ");
+		int cameraExposure = (int) SmartDashboard.getNumber("Camera Exposure: ", Settings.cameraExposure);
+		int distance = (int)SmartDashboard.getNumber("distance: ", 0);
+		VisionProcessing.resetCamera(cameraExposure, distance);
+		previousExposureValue = cameraExposure;
+		previousDist = distance;
 		if (autonomousCommand != null)
 			autonomousCommand.cancel();
 	}
 
 	@Override
 	public void teleopPeriodic() {
+		int cameraExposure = (int) SmartDashboard.getNumber("Camera Exposure: ", Settings.cameraExposure);
+		int distance = (int)SmartDashboard.getNumber("distance: ", 0);
 		Scheduler.getInstance().run();
-		if (!(previousExposureValue == (int) SmartDashboard.getNumber("Camera Exposure: "))) {
-			VisionProcessing.setCameraExposure((int) SmartDashboard.getNumber("Camera Exposure: "));
+		if (!(previousExposureValue == cameraExposure) || !(previousDist == distance)) {
+			VisionProcessing.resetCamera(cameraExposure, distance);
+			previousExposureValue = cameraExposure;
 		}
 	}
 
