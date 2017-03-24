@@ -15,9 +15,9 @@ public class Settings {
 	
 	public static final double boilerVisionTargetWidth = 16; // In inches
 	
-	public static final double gearVisionTargetWidth = 10; // In inches
+	public static final double gearVisionTargetWidth = 2; // In inches
 	
-	public static final int cameraExposure = 25;
+	public static final int cameraExposure = 20;
 	
 //	public static final int cameraBrightness = 0;
 	

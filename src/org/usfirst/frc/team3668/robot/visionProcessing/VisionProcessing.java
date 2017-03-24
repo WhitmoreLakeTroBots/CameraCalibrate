@@ -4,9 +4,7 @@ import java.util.Arrays;
 
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
-import org.opencv.core.Point;
 import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
@@ -18,7 +16,9 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 public class VisionProcessing {
 
 	Thread visionThread;
+	private static boolean _resetCamera;
 	private static boolean _takePicture;
+	private static int _photoDistance;
 	private static int _cameraExposureValue = Settings.cameraExposure;
 	private static double _boilerCalculatedDistanceFromTarget;
 	private static double _boilerCalculatedAngleFromMidpoint;
@@ -41,8 +41,7 @@ public class VisionProcessing {
 	private static Mat mat = new Mat();
 	// private static BoilerGripPipeline boilerGripPipeline = new
 	// BoilerGripPipeline();
-	// private static GearGripPipeline gearGripPipeline = new
-	// GearGripPipeline();
+	private static GearGripPipeline gearGripPipeline = new GearGripPipeline();
 	private static CvSink cvSink = null;
 	private boolean initializedCamera = false;
 
@@ -53,10 +52,10 @@ public class VisionProcessing {
 			UsbCamera usbCamera = null;
 			// Settings.cameraName previousCameraValue =
 			// Settings.cameraName.noProcess;
-		
+
 			usbCamera = CameraServer.getInstance().startAutomaticCapture(0);
 			usbCamera.setResolution(Settings.visionImageWidthPixels, Settings.visionImageHeightPixels);
-			//			usbCamera.setFPS(Settings.cameraFrameRate);
+			// usbCamera.setFPS(Settings.cameraFrameRate);
 			cvSink = CameraServer.getInstance().getVideo(usbCamera);
 
 			// UsbCamera gearCamera =
@@ -70,6 +69,10 @@ public class VisionProcessing {
 
 			// CvSink gearCvSink =
 			// CameraServer.getInstance().getVideo(gearCamera);
+			try {
+				Thread.sleep(2000);
+			} catch (InterruptedException e) {
+			}
 			while (!Thread.interrupted()) {
 				// Settings.cameraName switchValue = getCurrentCamera();
 				// boolean cameraValueChanged = switchValue !=
@@ -89,13 +92,25 @@ public class VisionProcessing {
 				// if (cvSink.grabFrame(mat) != 0) {
 				// switch (switchValue) {
 				// case boilerCamera:
-				if (_takePicture) {
+				if (_resetCamera) {
 					usbCamera.setExposureManual(_cameraExposureValue);
-					System.out.println("Taking picture(hopefully); Exposure Value: " + _cameraExposureValue);
-					processBoilerImage();
-					setTakePicture(false);
-					System.out.println("Photo taken");
+					cvSink.grabFrame(mat);
+					resetCamera();
+					try {
+						Thread.sleep(1000);
+					} catch (InterruptedException e) {
+					}
 				}
+				processGearCamera();
+
+				if (_takePicture) {
+//					System.out.println("Taking picture(hopefully); Exposure Value: " + _cameraExposureValue);
+//					processBoilerImage();
+					Imgcodecs.imwrite("/media/sda1/image" + imgCounter + "-" + _cameraExposureValue +"-dist-" + _photoDistance + ".jpeg", mat);
+					setTakePicture(false);
+//					System.out.println("Photo taken");
+				}
+
 				// break;
 				// case gearCamera:
 				// processGearCamera();
@@ -177,8 +192,8 @@ public class VisionProcessing {
 			// + 2,
 			// lowerTargetBoundingBox.y + lowerTargetBoundingBox.height + 2),
 			// new Scalar(255, 255, 255), 2);
-			Imgcodecs.imwrite("/media/sda1/image" + imgCounter + ".jpeg", mat);
-			System.out.println("Saving image");
+			Imgcodecs.imwrite("/media/sda1/image" + imgCounter + "-" + _cameraExposureValue + ".jpeg", mat);
+//			System.out.println("Saving image");
 
 			// System.err.println(imgCounter);
 			// System.err.println(upperTargetArea);
@@ -212,55 +227,58 @@ public class VisionProcessing {
 		}
 	}
 
-	// private static void processGearCamera() {
-	// MatOfPoint[] contourArray;
-	// int contourCounter = 0;
-	// angleOffCenter = 0;
-	// distFromTarget = 0;
-	// foundGearTarget = false;
-	// if (cvSink.grabFrame(mat) != 0) {
-	// System.err.println("Processing Gear Image");
-	// gearGripPipeline.process(mat);
-	// contourArray = new
-	// MatOfPoint[gearGripPipeline.filterContoursOutput().size()];
-	// if (!gearGripPipeline.filterContoursOutput().isEmpty()) {
-	// for (MatOfPoint contour : gearGripPipeline.filterContoursOutput()) {
-	// contourArray[contourCounter] = contour;
-	// contourCounter++;
-	// }
-	// Arrays.sort(contourArray, new ContourComparator());
-	// if (contourArray.length >= 2) {
-	// MatOfPoint upperTarget = contourArray[0];
-	// MatOfPoint lowerTarget = contourArray[1];
-	// Rect upperTargetBoundingBox = Imgproc.boundingRect(upperTarget);
-	// Rect lowerTargetBoundingBox = Imgproc.boundingRect(lowerTarget);
-	// double upperTargetArea = Imgproc.contourArea(upperTarget);
-	// double lowerTargetArea = Imgproc.contourArea(lowerTarget);
-	//
-	// averageMidpoint = (((upperTargetBoundingBox.width / 2) +
-	// upperTargetBoundingBox.x)
-	// + ((lowerTargetBoundingBox.width / 2) + lowerTargetBoundingBox.x)) / 2;
-	// averageArea = (upperTargetArea + lowerTargetArea) / 2;
-	// averageContourWidth = (upperTargetBoundingBox.width +
-	// lowerTargetBoundingBox.width) / 2;
-	// //Rewrite the code to use area as opposed to width
-	//// distFromTarget =
-	// RobotMath.gearWidthOfContoursToDistanceInFeet(averageContourWidth);
-	//// angleOffCenter =
-	// RobotMath.gearAngleToTurnWithVisionProfiling(averageContourWidth,
-	// averageMidpoint);
-	// foundGearTarget = (Math.abs(1 - (upperTargetArea / lowerTargetArea)) <
-	// 0.2);
-	// }
-	// }
-	//
-	// synchronized (lockObject) {
-	// _gearCalculatedAngleFromMidpoint = angleOffCenter;
-	// _gearCalculatedDistanceFromTarget = distFromTarget;
-	// _foundGearTarget = foundGearTarget;
-	// }
-	// }
-	// }
+	private static void processGearCamera() {
+		MatOfPoint[] contourArray;
+		int contourCounter = 0;
+		angleOffCenter = 0;
+		distFromTarget = 0;
+		foundGearTarget = false;
+		if (cvSink.grabFrame(mat) != 0) {
+			System.err.println("Processing Gear Image");
+			gearGripPipeline.process(mat);
+			contourArray = new MatOfPoint[gearGripPipeline.filterContoursOutput().size()];
+			if (!gearGripPipeline.filterContoursOutput().isEmpty()) {
+				for (MatOfPoint contour : gearGripPipeline.filterContoursOutput()) {
+					contourArray[contourCounter] = contour;
+					contourCounter++;
+				}
+				Arrays.sort(contourArray, new ContourComparator());
+
+				if (contourArray.length >= 2) {
+					MatOfPoint upperTarget = contourArray[0];
+					MatOfPoint lowerTarget = contourArray[1];
+					Rect upperTargetBoundingBox = Imgproc.boundingRect(upperTarget);
+					Rect lowerTargetBoundingBox = Imgproc.boundingRect(lowerTarget);
+					double upperTargetArea = Imgproc.contourArea(upperTarget);
+					double lowerTargetArea = Imgproc.contourArea(lowerTarget);
+
+					averageMidpoint = (((upperTargetBoundingBox.width / 2) + upperTargetBoundingBox.x)
+							+ ((lowerTargetBoundingBox.width / 2) + lowerTargetBoundingBox.x)) / 2;
+					averageArea = (upperTargetArea + lowerTargetArea) / 2;
+					averageContourWidth = (upperTargetBoundingBox.width + lowerTargetBoundingBox.width) / 2;
+//					System.out.println("Average Midpoint: " + averageMidpoint);
+//					System.out.println("Average Area: " + averageArea);
+					System.out.println("Distance: " + _photoDistance + "Average Contour Width: " + averageContourWidth);
+
+					// Rewrite the code to use area as opposed to width
+					 distFromTarget =
+					VisionMath.gearWidthOfContoursToDistanceInFeet(averageContourWidth);
+					 angleOffCenter =
+					VisionMath.gearAngleToTurnWithVisionProfiling(averageContourWidth, averageMidpoint);
+					System.out.println("Distance from target: " + distFromTarget);
+					System.out.println("Angle Off Center: " + angleOffCenter);
+					foundGearTarget = (Math.abs(1 - (upperTargetArea / lowerTargetArea)) < 0.2);
+					imgCounter++;
+				}
+			}
+
+			synchronized (lockObject) {
+				_gearCalculatedAngleFromMidpoint = angleOffCenter;
+				_gearCalculatedDistanceFromTarget = distFromTarget;
+				_foundGearTarget = foundGearTarget;
+			}
+		}
+	}
 
 	public static double getBoilerCalculatedDistanceFromTarget() {
 		double boilerCalculatedDistanceFromTarget;
@@ -313,11 +331,11 @@ public class VisionProcessing {
 			_takePicture = takePicture;
 		}
 	}
-	public static void setCameraExposure(int exposure){
-		synchronized (lockObject) {
-			_cameraExposureValue = exposure;
-		}
-	}
+	// public static void setCameraExposure(int exposure){
+	// synchronized (lockObject) {
+	// _cameraExposureValue = exposure;
+	// }
+	// }
 
 	public static Settings.cameraName getCurrentCamera() {
 		Settings.cameraName switchValue;
@@ -341,6 +359,20 @@ public class VisionProcessing {
 			foundGearTarget = _foundGearTarget;
 		}
 		return foundGearTarget;
+	}
+
+	public static void resetCamera(int exposure, int distance) {
+		synchronized (lockObject) {
+			_resetCamera = true;
+			_cameraExposureValue = exposure;
+			_photoDistance = distance;
+		}
+	}
+
+	private static void resetCamera() {
+		synchronized (lockObject) {
+			_resetCamera = false;
+		}
 	}
 
 }
